@@ -58,6 +58,7 @@ class SineOsc : Oscillator {
         }
 
         void set_amp(float amp) { Oscillator::set_amp(amp); }
+        float get_amp() { return Oscillator::get_amp(); }
 
         void calc_step() {
             _step = (2 * PI_CON * this->get_freq()) / this->get_samp_rate();
@@ -95,6 +96,7 @@ class SawOsc : Oscillator {
         }
 
         void set_amp(float amp) { Oscillator::set_amp(amp); }
+        float get_amp() { return Oscillator::get_amp(); }
 
 
         void calc_period() {
@@ -139,6 +141,7 @@ class SqOsc : Oscillator {
         }
 
         void set_amp(float amp) { Oscillator::set_amp(amp); }
+        float get_amp() { return Oscillator::get_amp(); }
 
 
         void calc_step() {
@@ -160,54 +163,59 @@ class SqOsc : Oscillator {
 
 class WaveAdder{
     private:
-        SineOsc sine;
-        SqOsc square;
-        SawOsc sawtooth;
+        SineOsc _sine;
+        SqOsc _square;
+        SawOsc _sawtooth;
 
-        int16_t upper_bound;
-        int16_t lower_bound;
+        int16_t _upper_bound;
+        int16_t _lower_bound;
 
     public:
-        WaveAdder(float freq, float amp, float phase, float samp_rate, int16_t *limits) {
+        WaveAdder(float freq, float amp, float phase, float samp_rate, float suplimit, float lowlimit) {
             SineOsc sinaux(freq, amp, phase, samp_rate);
             SqOsc sqaux(freq, amp, phase, samp_rate, 0.0f);
             SawOsc sawaux(freq, amp, phase, samp_rate);
 
-            sine = sinaux;
-            square = sqaux;
-            sawtooth = sawaux;
+            _sine = sinaux;
+            _square = sqaux;
+            _sawtooth = sawaux;
 
-            upper_bound = limits[0];
-            lower_bound = limits[1];
+            _upper_bound = suplimit;
+            _lower_bound = lowlimit;
         }
 
         void change_freq(float freq) {
-            sine.set_freq(freq);
-            square.set_freq(freq);
-            sawtooth.set_freq(freq);
+            _sine.set_freq(freq);
+            _square.set_freq(freq);
+            _sawtooth.set_freq(freq);
         }
 
-        void change_sin_amp(float amp) { sine.set_amp(amp); }
-        void change_squ_amp(float amp) { square.set_amp(amp); }
-        void change_saw_amp(float amp) { sawtooth.set_amp(amp); }
+        void change_sin_amp(float amp) { _sine.set_amp(amp); }
+        void change_squ_amp(float amp) { _square.set_amp(amp); }
+        void change_saw_amp(float amp) { _sawtooth.set_amp(amp); }
 
+        float get_next_value() {
+            float val = _sine.get_amp()*_sine.get_next_value() + 
+                        _square.get_amp()*_square.get_next_value() + 
+                        _sawtooth.get_amp()*_sawtooth.get_next_value();
+
+            if(val > _upper_bound) val = _upper_bound;
+            if(val < _lower_bound) val = _lower_bound;
+
+            return val;
+        }
         
 };
 
 int main() {
-    SqOsc sq(440.0f, 0.5f, 0.0f, 44100.0f, 0.0f);
-    SineOsc si(440.0f, 0.3f, 0.0f, 44100.0f);
-    SawOsc sa(440.0f, 0.2f, 0.0f, 44100.0f);
-    
+    WaveAdder wa(440.0f, 1.0f, 0.0f, 44100.0f, 1.0f, -1.0f);
+    wa.change_squ_amp(1.0f);
+    wa.change_saw_amp(1.0f);
+
+
     for(auto i = 0; i < 1024; i++) {
-        //sq.get_next_value();
-
-        if(i == 512)
-            sq.set_freq(220.0f);
-
-        std::cout<<sq.get_next_value()<<std::endl;
+        std::cout<<wa.get_next_value()<<std::endl;
     }
-    std::cout<<sq.get_next_value();
 
 
     return 0;
